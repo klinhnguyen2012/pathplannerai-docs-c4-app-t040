@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PathPlanner — Bài toán & Giải pháp kỹ thuật</title>
+<style>
+  :root {
+    --bg: #ffffff; --bg-soft: #f6f8fb; --fg: #172033; --muted: #5b6b82;
+    --line: #e1e8f1; --brand: #2563eb; --brand-soft: #e8f0fe; --code-bg: #f1f5f9;
+    --warn-bg: #fff6e5; --warn: #8a5a00;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1522; --bg-soft: #151d2e; --fg: #e6ebf3; --muted: #93a3bb;
+      --line: #25314a; --brand: #7aa2ff; --brand-soft: #1a2744; --code-bg: #1a2336;
+      --warn-bg: #2a2110; --warn: #f0c36a;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+    font: 15.5px/1.7 Inter, "Segoe UI", system-ui, sans-serif; }
+  a { color: var(--brand); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code { font: .88em ui-monospace, Menlo, Consolas, monospace; background: var(--code-bg);
+    padding: 1px 6px; border-radius: 5px; overflow-wrap: anywhere; }
+  pre { background: var(--code-bg); padding: 14px 16px; border-radius: 10px; overflow-x: auto;
+    line-height: 1.55; border: 1px solid var(--line); }
+  pre code { background: none; padding: 0; }
+
+  header.top { position: sticky; top: 0; z-index: 10; height: 56px; display: flex;
+    align-items: center; justify-content: space-between; padding: 0 20px;
+    background: var(--bg); border-bottom: 1px solid var(--line); }
+  .logo { font-weight: 800; letter-spacing: -.02em; color: var(--fg); }
+  .logo span { color: var(--brand); }
+  .search { padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px;
+    color: var(--muted); font-size: 13px; background: var(--bg-soft); }
+
+  .layout { display: grid; grid-template-columns: 260px minmax(0, 1fr) 210px;
+    max-width: 1320px; margin: 0 auto; }
+  nav.side, aside.toc { position: sticky; top: 56px; align-self: start; height: calc(100vh - 56px);
+    overflow-y: auto; padding: 24px 16px; font-size: 14px; }
+  nav.side { border-right: 1px solid var(--line); }
+  nav.side h4, aside.toc h4 { margin: 0 0 10px; font-size: 11.5px; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--muted); }
+  nav.side a, aside.toc a { display: block; padding: 5px 10px; border-radius: 6px; color: var(--muted); }
+  nav.side a:hover, aside.toc a:hover { background: var(--bg-soft); color: var(--fg); text-decoration: none; }
+  nav.side a.active, aside.toc a.active { background: var(--brand-soft); color: var(--brand); font-weight: 600; }
+  aside.toc { border-left: 1px solid var(--line); }
+  aside.toc a { padding: 4px 8px; font-size: 13px; }
+
+  main { padding: 36px 44px 90px; min-width: 0; }
+  main h1 { font-size: 34px; letter-spacing: -.03em; margin: 0 0 12px; line-height: 1.2; }
+  main h2 { font-size: 24px; margin: 52px 0 12px; padding-top: 10px; letter-spacing: -.02em;
+    border-top: 1px solid var(--line); }
+  main h3 { font-size: 17.5px; margin: 28px 0 8px; }
+  .lead { font-size: 17px; color: var(--muted); }
+  .badges { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 0; }
+  .badge { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px;
+    background: var(--brand-soft); color: var(--brand); }
+
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; margin: 14px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; min-width: 620px; }
+  th, td { padding: 11px 14px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
+  th { background: var(--bg-soft); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  tr:last-child td { border-bottom: 0; }
+
+  .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 14px 0; }
+  .card { border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; background: var(--bg); }
+  .card h3, .card h4 { margin: 0 0 6px; font-size: 16px; }
+  .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+  a.card { color: inherit; } a.card:hover { border-color: var(--brand); text-decoration: none; }
+
+  .callout { border-left: 4px solid var(--brand); background: var(--brand-soft); padding: 12px 16px;
+    border-radius: 8px; margin: 16px 0; }
+  .callout.warn { border-color: var(--warn); background: var(--warn-bg); color: var(--warn); }
+  .callout p { margin: 0; }
+
+  .diagram { border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin: 14px 0;
+    background: var(--bg-soft); overflow-x: auto; text-align: center; }
+  .diagram figcaption { font-size: 13px; color: var(--muted); margin-top: 8px; }
+  .formula { text-align: center; font: 15px ui-monospace, Menlo, monospace; padding: 12px;
+    background: var(--code-bg); border-radius: 10px; margin: 12px 0; overflow-x: auto; }
+
+  @media (max-width: 1100px) { .layout { grid-template-columns: 240px minmax(0, 1fr); } aside.toc { display: none; } }
+  @media (max-width: 760px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.side { display: none; }
+    main { padding: 24px 16px 70px; }
+    main h1 { font-size: 27px; }
+    .cards { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <a class="logo" href="#top">PathPlanner <span>Docs</span></a>
+  <div class="search">Tìm kiếm… ⌘K</div>
+</header>
+
+<div class="layout" id="top">
+
+  <nav class="side" aria-label="Điều hướng tài liệu">
+    <h4>PathPlanner Technical Docs</h4>
+    <a href="#problem">1. Bài toán</a>
+    <a href="#solution">2. Tổng quan giải pháp</a>
+    <a href="#architecture">3. Kiến trúc hệ thống</a>
+    <a href="#pipeline">4. AI Pipeline 6 chặng</a>
+    <a href="#algorithms">5. Thuật toán cốt lõi</a>
+    <a href="#chatbot">6. Chatbot & Interview</a>
+    <a href="#data">7. Dữ liệu & Hợp đồng</a>
+    <a href="#deploy">8. Triển khai</a>
+    <a href="#decisions">9. Quyết định thiết kế</a>
+    <a href="#roadmap">10. Hạn chế & Hướng mở rộng</a>
+  </nav>
+
+  <main>
+    <h1>PathPlanner (P-040): Bài toán & Giải pháp kỹ thuật</h1>
+    <p class="lead">Nền tảng định hướng và xây dựng lộ trình phát triển năng lực cá nhân hóa. Hệ thống đọc CV của ứng viên, so với yêu cầu tuyển dụng thực tế, tính khoảng cách kỹ năng và sinh lộ trình học nhiều giai đoạn có thứ tự tiên quyết.</p>
+    <div class="badges">
+      <span class="badge">Next.js 16 · React 19</span>
+      <span class="badge">FastAPI</span>
+      <span class="badge">LangGraph</span>
+      <span class="badge">PostgreSQL 16</span>
+      <span class="badge">ESCO Taxonomy</span>
+    </div>
+
+    <!-- ============ 1. PROBLEM ============ -->
+    <h2 id="problem">1. Bài toán</h2>
+    <p>Khoảng cách giữa thứ được đào tạo và thứ thị trường tuyển dụng cần ngày càng lớn. Ba nhóm chịu tác động khác nhau:</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Bên liên quan</th><th>Vấn đề thực tế</th></tr></thead>
+      <tbody>
+        <tr><td><b>Ứng viên / Sinh viên</b></td><td>Không biết năng lực của mình đang ở đâu so với thị trường. Job Description (JD) có quá nhiều yêu cầu phân tán. Học lan man, không có thứ tự ưu tiên hay quan hệ phụ thuộc giữa các kỹ năng.</td></tr>
+        <tr><td><b>Nhà tuyển dụng</b></td><td>Nhận nhiều CV không đạt chuẩn năng lực cốt lõi, tốn thời gian sàng lọc.</td></tr>
+        <tr><td><b>Thị trường lao động</b></td><td>Kỹ năng công nghệ thay đổi liên tục. Thiếu khung chuẩn chung giữa JD và hồ sơ năng lực (cùng một kỹ năng có nhiều cách viết).</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Các bài toán kỹ thuật con</h3>
+    <div class="cards">
+      <div class="card"><h4>Dữ liệu phi cấu trúc</h4><p>CV (PDF nhiều cột, DOCX) và JD (HTML từ nhiều trang tuyển dụng) phải trở thành dữ liệu có schema.</p></div>
+      <div class="card"><h4>Chuẩn hóa kỹ năng</h4><p><code>Postgres</code>, <code>PostgreSQL 14+</code>, <code>React.js</code>, <code>ReactJS</code> phải ánh xạ về cùng một định danh.</p></div>
+      <div class="card"><h4>Lộ trình đúng thứ tự</h4><p>Lộ trình do LLM sinh phải là đồ thị không chu trình (DAG) và kỹ năng tiên quyết phải đứng trước.</p></div>
+      <div class="card"><h4>Kiểm soát LLM</h4><p>Hội thoại phải nằm trong phạm vi, khôi phục được phiên, không để LLM sửa dữ liệu CV hay tự ý tạo lộ trình.</p></div>
+    </div>
+
+    <h3>Người dùng mục tiêu</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Nhóm</th><th>Nhu cầu chính</th></tr></thead>
+      <tbody>
+        <tr><td>Sinh viên / mới tốt nghiệp</td><td>Biết mình thiếu gì so với chuẩn nghề, cần lộ trình từ nền tảng đến nâng cao.</td></tr>
+        <tr><td>Người chuyển nghề / up-skill</td><td>Tận dụng thế mạnh cũ, xác định chính xác khoảng cách để chuyển hướng.</td></tr>
+        <tr><td>Quản trị / cố vấn hướng nghiệp</td><td>Dữ liệu benchmark kỹ năng, quản lý ngân hàng JD, theo dõi mức độ đáp ứng.</td></tr>
+      </tbody>
+    </table></div>
+
+    <!-- ============ 2. SOLUTION ============ -->
+    <h2 id="solution">2. Tổng quan giải pháp</h2>
+    <p>PathPlanner kết hợp <b>chuẩn hóa năng lực ESCO</b>, <b>dữ liệu thị trường thu thập từ các trang tuyển dụng</b> và <b>mô hình ngôn ngữ</b>. Nguyên tắc chung: LLM chỉ làm phần cần hiểu ngôn ngữ (đọc CV, đọc JD, đặt tên giai đoạn). Phần cần chính xác (so khớp, tính điểm, kiểm tra DAG) do mã tiền định đảm nhiệm.</p>
+
+    <figure class="diagram">
+      <pre class="mermaid">
+flowchart LR
+  A[Onboarding<br/>3 câu hỏi] --> B[Upload CV]
+  B --> C[Skill Gap<br/>Analysis]
+  C --> D[Sinh Roadmap<br/>nhiều Phase]
+  D --> E[Thực thi &<br/>Tái đánh giá]
+  E -.cập nhật tiến độ.-> C
+      </pre>
+      <figcaption>Hành trình người dùng từ đầu đến cuối. Tái đánh giá đưa kết quả quay lại bước phân tích khoảng cách.</figcaption>
+    </figure>
+
+    <h3>Giá trị mang lại</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Năng lực</th><th>Mô tả</th><th>Đầu ra</th></tr></thead>
+      <tbody>
+        <tr><td><b>Smart CV Parsing</b></td><td>Tải CV lên, hệ thống tự bóc kỹ năng, học vấn, kinh nghiệm và chuẩn hóa.</td><td><code>CVProfile</code></td></tr>
+        <tr><td><b>Skill Gap Analysis</b></td><td>Chia kỹ năng thành đã có / cần cải thiện / còn thiếu so với vị trí mục tiêu.</td><td>Match Score %, danh sách Gap</td></tr>
+        <tr><td><b>Personalized Roadmap</b></td><td>Các Phase có mục tiêu, thời lượng, tài liệu và điều kiện tiên quyết.</td><td><code>MarketLearningRoadmap V3</code></td></tr>
+        <tr><td><b>Reassessment</b></td><td>Đánh dấu hoàn thành, cập nhật chứng chỉ, tính lại mức sẵn sàng.</td><td>Điểm và lộ trình mới</td></tr>
+        <tr><td><b>AI Interviewer</b></td><td>Phỏng vấn thử bằng giọng nói, chấm theo STAR.</td><td>Báo cáo phiên</td></tr>
+      </tbody>
+    </table></div>
+
+    <!-- ============ 3. ARCHITECTURE ============ -->
+    <h2 id="architecture">3. Kiến trúc hệ thống</h2>
+    <p>Monorepo gồm các dịch vụ chạy bằng Docker Compose. Backend theo kiến trúc module, mỗi module chia tầng <code>domain</code>, <code>application</code>, <code>infrastructure</code>, <code>presentation</code>.</p>
+
+    <figure class="diagram">
+      <pre class="mermaid">
+flowchart TB
+  subgraph Client
+    FE[Candidate Portal<br/>Next.js]
+    AD[Admin Portal<br/>Next.js]
+  end
+  subgraph Backend[FastAPI Backend]
+    API[REST API /api/v1]
+    MOD[Modules: auth, roadmap,<br/>skill_assessment, job_description,<br/>skill_catalog, interview, chatbot, admin]
+  end
+  subgraph AI[AI Layer]
+    CORE[ai_pipeline_core<br/>CV · Market · Gap · Roadmap]
+    BOT[Chatbot<br/>JEV gateway + LangGraph]
+    IV[Interview worker<br/>LiveKit]
+  end
+  DB[(PostgreSQL 16)]
+  ESCO[(ESCO + Roadmap outlines)]
+  LLM[[LLM Provider]]
+  FE --> API
+  AD --> API
+  API --> MOD
+  MOD --> CORE
+  MOD --> BOT
+  MOD --> DB
+  CORE --> ESCO
+  CORE --> LLM
+  BOT --> LLM
+  IV --> LLM
+  IV -->|callback| API
+      </pre>
+      <figcaption>Các thành phần chính và hướng gọi giữa chúng.</figcaption>
+    </figure>
+
+    <div class="table-wrap"><table>
+      <thead><tr><th>Thành phần</th><th>Công nghệ</th><th>Vai trò</th><th>Thư mục</th></tr></thead>
+      <tbody>
+        <tr><td>Candidate Portal</td><td>Next.js 16, React 19, Tailwind 4</td><td>Onboarding, dashboard, skill gap, roadmap, phỏng vấn</td><td><code>src/frontend</code></td></tr>
+        <tr><td>Admin Portal</td><td>Next.js</td><td>Quản lý JD, skill catalog, báo cáo</td><td><code>src/admin</code></td></tr>
+        <tr><td>Backend API</td><td>FastAPI, Pydantic v2</td><td>REST, xác thực, điều phối module</td><td><code>src/backend</code></td></tr>
+        <tr><td>AI Pipeline Core</td><td>Python, LangChain</td><td>CV, Market, Gap, Assessment, Roadmap</td><td><code>src/ai_pipeline_core</code></td></tr>
+        <tr><td>Chatbot</td><td>LangGraph, checkpoint Postgres/SQLite</td><td>Hội thoại tư vấn theo intent</td><td><code>src/Chatbot</code></td></tr>
+        <tr><td>Interview bot</td><td>LiveKit, ElevenLabs STT/TTS</td><td>Phỏng vấn giọng nói, chấm STAR</td><td><code>src/interview-bot</code></td></tr>
+        <tr><td>Dữ liệu</td><td>PostgreSQL 16, JSON</td><td>Lưu người dùng, phiên, ESCO, outline nghề</td><td><code>src/data</code></td></tr>
+      </tbody>
+    </table></div>
+
+    <!-- ============ 4. PIPELINE ============ -->
+    <h2 id="pipeline">4. AI Pipeline 6 chặng</h2>
+    <p><code>ai_pipeline_core</code> biến CV dạng PDF và tin tuyển dụng dạng HTML thành lộ trình có cấu trúc.</p>
+
+    <figure class="diagram">
+      <pre class="mermaid">
+flowchart TD
+  CV[CV: PDF/DOCX/TXT] --> S1[1. CV Extraction<br/>2 tầng AI]
+  KW[Từ khóa nghề] --> S2[2. Market Engine<br/>cào JD + trích yêu cầu]
+  S1 --> S3[3. Normalization<br/>ESCO + alias]
+  S2 --> S3
+  S3 --> S4[4. Skill Gap Analysis]
+  S4 --> S5[5. Assessment<br/>sinh câu hỏi]
+  S4 --> S6[6. Roadmap V3<br/>DAG + 2 tầng AI]
+  S6 --> OUT[(MarketLearningRoadmap)]
+      </pre>
+      <figcaption>Chặng 3 chuẩn hóa dữ liệu của cả CV và thị trường trước khi so khớp.</figcaption>
+    </figure>
+
+    <h3>Chặng 1: Trích xuất CV</h3>
+    <ul>
+      <li><b>Đọc văn bản:</b> PDF dùng cách đọc theo cột (layout-aware) để không trộn cột trái (kỹ năng, thông tin cá nhân) với cột phải (kinh nghiệm).</li>
+      <li><b>AI 1:</b> bóc <code>education</code>, <code>languages</code>, <code>skills</code>, <code>soft_skills</code>, đồng thời chia kinh nghiệm thành <code>activity_blocks</code>. Rào kiểm soát: ít nhất 90% block phải có nội dung thật, sai schema được thử lại tối đa 1 lần.</li>
+      <li><b>AI 2:</b> chỉ đọc các block, phân loại thành <code>work</code>, <code>projects</code>, <code>research</code>, <code>other</code> và lấy thời gian, vị trí, công nghệ, bằng chứng kỹ năng.</li>
+      <li><b>Hợp nhất:</b> ghép hai kết quả, chuẩn hóa kỹ năng qua ESCO, trả về <code>CVProfile</code> (Pydantic).</li>
+    </ul>
+
+    <h3>Chặng 2: Market Engine</h3>
+    <ul>
+      <li>Nguồn: TopCV, ITviec, CareerViet. Tìm URL theo từ khóa, khử trùng và lấy dư 25% để bù tin hết hạn.</li>
+      <li>Cào song song bằng <code>httpx</code> bất đồng bộ. TopCV dùng <code>curl_cffi</code> để qua bot-detection, fallback sang Playwright khi cần render JS.</li>
+      <li>Chỉ giữ trang có nội dung JD tối thiểu 100 ký tự hợp lệ.</li>
+      <li>LLM trích <code>required_skills</code>, <code>nice_to_have_skills</code>, <code>target_level</code> (Fresher/Junior/Middle/Senior), số năm kinh nghiệm, học vấn.</li>
+      <li>Snapshot được ghi ra file <code>.tmp</code> rồi đổi tên nguyên tử (atomic replace) thành <code>market_snapshots/{snapshot_id}.json</code>, tổng hợp theo cửa sổ 30 ngày.</li>
+    </ul>
+
+    <h3>Chặng 3: Chuẩn hóa kỹ năng (3 tầng)</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Tầng</th><th>Cơ chế</th><th>Ví dụ</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Khử nhiễu chuỗi: chữ thường, bỏ khoảng trắng và dấu câu, đổi ký tự đặc biệt</td><td><code>c++</code> → <code>cpp</code>, <code>node.js</code> → <code>nodejs</code></td></tr>
+        <tr><td>2</td><td>Bảng từ đồng nghĩa (alias) cho công nghệ phổ biến</td><td><code>Postgres</code> → <code>PostgreSQL</code></td></tr>
+        <tr><td>3</td><td>Ánh xạ về mã định danh chuẩn ESCO (<code>skill_id</code>)</td><td>URI/UUID ESCO</td></tr>
+      </tbody>
+    </table></div>
+
+    <!-- ============ 5. ALGORITHMS ============ -->
+    <h2 id="algorithms">5. Thuật toán cốt lõi</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Thuật toán</th><th>Vai trò</th><th>Đầu vào chính</th><th>Đầu ra chính</th></tr></thead>
+      <tbody>
+        <tr><td><a href="#algo-gap"><b>Skill Gap & Match Score</b></a></td><td>So khớp CV với benchmark thị trường</td><td><code>CVProfile</code>, <code>MarketSnapshot</code></td><td>Matched, Gaps, Score %</td></tr>
+        <tr><td><a href="#algo-dag"><b>Roadmap DAG Validation</b></a></td><td>Đảm bảo thứ tự học hợp lệ</td><td>Topic, <code>depends_on</code></td><td>Thứ tự topo, lỗi chu trình</td></tr>
+        <tr><td><a href="#algo-roadmap"><b>Two-pass Roadmap Synthesis</b></a></td><td>Sinh Phase và nội dung sư phạm</td><td>Gap, outline nghề chuẩn</td><td>Roadmap V3</td></tr>
+        <tr><td><a href="#algo-assess"><b>Assessment Generation</b></a></td><td>Kiểm chứng kỹ năng tự nhận</td><td>Gap, <code>target_level</code></td><td>Câu hỏi tình huống, rubric</td></tr>
+        <tr><td><a href="#chatbot"><b>Intent Routing (JEV)</b></a></td><td>Định tuyến và chặn ngoài phạm vi</td><td>Tin nhắn</td><td>Intent, độ tin cậy</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3 id="algo-gap">5.1. Skill Gap & Match Score</h3>
+    <pre><code>1. Lấy Top K kỹ năng xuất hiện nhiều nhất trong MarketSnapshot của nghề mục tiêu
+2. Với mỗi kỹ năng thị trường:
+     có trong CVProfile (hoặc có bằng chứng dự án) -> MATCHED
+     không có                                      -> GAP, kèm trọng số thị trường (rank)
+3. Match Score = tổng trọng số MATCHED / tổng trọng số Top K * 100</code></pre>
+    <div class="formula">Match% = Σ w(matched) / Σ w(topK) × 100</div>
+    <p>Trọng số lấy từ tần suất xuất hiện trong JD, nên kỹ năng được yêu cầu nhiều hơn làm điểm lệch nhiều hơn. Gap được sắp theo trọng số này để quyết định thứ tự học.</p>
+
+    <h3 id="algo-roadmap">5.2. Two-pass Roadmap Synthesis</h3>
+    <figure class="diagram">
+      <pre class="mermaid">
+flowchart TD
+  IN[Gap skills + Outline nghề<br/>từ data/roadmaps] --> A1[AI 1: chọn Topic,<br/>thêm tiên quyết, chia Phase,<br/>đặt depends_on_topic_ids]
+  A1 --> V{Validator<br/>DAG tiền định}
+  V -->|có chu trình| ERR[Báo lỗi / thử lại]
+  V -->|hợp lệ| A2[AI 2: đặt tên Phase<br/>và mục tiêu hành động]
+  A2 --> EN[Enrichment: gắn link tài liệu<br/>tối đa 2 nguồn / topic]
+  EN --> OUT[(Roadmap V3)]
+      </pre>
+      <figcaption>AI 1 quyết định cấu trúc, validator xác nhận, AI 2 chỉ viết lời.</figcaption>
+    </figure>
+    <p>Tách hai lượt giúp phần cấu trúc (dễ sai) được kiểm tra bằng mã trước khi LLM sinh văn bản. Outline nghề chuẩn trong <code>src/data/roadmaps/</code> giới hạn LLM chỉ chọn trong tập topic có thật.</p>
+
+    <h3 id="algo-dag">5.3. Kiểm tra DAG (Deterministic Topological Sorter)</h3>
+    <ul>
+      <li>Phát hiện chu trình phụ thuộc và báo lỗi thay vì sinh lộ trình sai.</li>
+      <li>Đảm bảo topic tiên quyết luôn nằm ở Phase trước topic phụ thuộc.</li>
+      <li>Trong cùng ràng buộc, ưu tiên topic giải quyết Gap có trọng số thị trường cao.</li>
+    </ul>
+
+    <h3 id="algo-assess">5.4. Sinh câu hỏi đánh giá</h3>
+    <p>Mỗi câu gồm <code>skill_id</code>, <code>question_text</code> (tình huống kỹ thuật thực tế, tránh lý thuyết suông), <code>options</code> hoặc <code>rubric</code>, và <code>difficulty</code> khớp <code>target_level</code> của người dùng. Dùng để kiểm chứng kỹ năng ứng viên tự nhận nhưng bằng chứng còn yếu.</p>
+
+    <h3>5.5. Đầu ra Roadmap V3</h3>
+    <pre><code>MarketLearningRoadmap
+ ├─ career_goal
+ ├─ phases[]
+ │   └─ groups[]
+ │       └─ topics[]  { label, description, step, depends_on, links[] }
+ └─ metadata  { số Gap giải quyết, thời gian dự kiến, sha256 }</code></pre>
+
+    <!-- ============ 6. CHATBOT ============ -->
+    <h2 id="chatbot">6. Chatbot & AI Interviewer</h2>
+    <h3>Chatbot: máy trạng thái tiền định + LLM không giữ trạng thái</h3>
+    <p>Hội thoại được kiểm soát bằng máy trạng thái, LLM chỉ được gọi trong từng node và không tự giữ phiên.</p>
+    <figure class="diagram">
+      <pre class="mermaid">
+sequenceDiagram
+  actor U as Người dùng
+  participant FE as Frontend
+  participant J as JEV Gateway
+  participant G as LangGraph 5 bước
+  participant S as Session Store
+  U->>FE: Tin nhắn
+  FE->>J: Định tuyến intent
+  alt ngoài phạm vi
+    J-->>FE: Từ chối an toàn
+  else routed
+    J->>G: intent, query, confidence
+    G->>S: Đọc checkpoint (thread_id = session_id)
+    G-->>FE: Câu trả lời hoặc 1 câu hỏi làm rõ
+    G->>S: Ghi checkpoint
+  end
+      </pre>
+      <figcaption>JEV chặn yêu cầu ngoài phạm vi trước khi vào LangGraph.</figcaption>
+    </figure>
+    <ul>
+      <li><b>JEV Intent Gateway:</b> phân loại 5 intent chính, chỉ chuyển tiếp khi <code>status == "routed"</code>.</li>
+      <li><b>Checkpointing:</b> trạng thái phiên lưu theo <code>session_id</code> (Postgres/SQLite), hỗ trợ tiếp tục hoặc bắt đầu yêu cầu mới.</li>
+      <li><b>Chat Context Buffer:</b> hai bảng lưu tin nhắn gốc và bản tóm tắt, tự rút gọn (auto-compact) khi dài.</li>
+      <li><b>CV chỉ đọc:</b> chatbot không được sửa dữ liệu CV.</li>
+      <li><b>Tool allowlist theo intent</b> và giao thức phê duyệt (consent) trước khi tạo lộ trình. Web search có quy tắc an toàn riêng.</li>
+    </ul>
+
+    <h3>AI Interviewer (Linda)</h3>
+    <ul>
+      <li>Phỏng vấn giọng nói qua LiveKit: ElevenLabs Scribe (STT) → LLM → ElevenLabs (TTS).</li>
+      <li>Bốn Role: <code>backend-engineer</code>, <code>frontend-engineer</code>, <code>AI-engineer</code>, <code>data-engineer</code>; có thể thêm JD để sinh câu hỏi theo JD.</li>
+      <li>Phiên tối đa 20 phút. Cuối phiên evaluator chấm 4 mục STAR thang 0–4 cho cả buổi, mỗi mục kèm tối đa 3 dẫn chứng nguyên văn.</li>
+      <li>Backend chỉ lưu metadata, trạng thái và report trong bảng <code>interview_sessions</code> theo TTL. Transcript và audio không được lưu.</li>
+    </ul>
+
+    <!-- ============ 7. DATA ============ -->
+    <h2 id="data">7. Dữ liệu & Hợp đồng AI–Backend</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Nguồn dữ liệu</th><th>Vị trí</th><th>Nội dung</th></tr></thead>
+      <tbody>
+        <tr><td>ESCO</td><td><code>src/data/esco</code></td><td>Taxonomy nghề và kỹ năng chuẩn</td></tr>
+        <tr><td>Outline nghề</td><td><code>src/data/roadmaps</code></td><td>Khung lộ trình mẫu theo vị trí IT (Software Developer, Data Engineer, AI Engineer, UX Analyst…)</td></tr>
+        <tr><td>Market snapshot</td><td><code>runtime_data/market_snapshots</code></td><td>Tổng hợp yêu cầu JD theo nghề</td></tr>
+        <tr><td>PostgreSQL</td><td>service <code>database</code></td><td>Người dùng, JD, phiên phỏng vấn, checkpoint</td></tr>
+      </tbody>
+    </table></div>
+    <p>Giao tiếp giữa AI và backend được mô tả trong <a href="AI_pipeline_core/AI_BACKEND_INTEGRATION_CONTRACT.html">AI–Backend Integration Contract</a>. Schema dữ liệu dùng Pydantic ở cả hai phía để bắt lỗi sớm.</p>
+
+    <!-- ============ 8. DEPLOY ============ -->
+    <h2 id="deploy">8. Triển khai</h2>
+    <figure class="diagram">
+      <pre class="mermaid">
+flowchart LR
+  subgraph Docker Compose
+    FE[frontend]
+    AD[admin]
+    BE[backend]
+    DB[(database<br/>postgres:16)]
+    IW[interview-worker<br/>profile: interview]
+  end
+  FE --> BE
+  AD --> BE
+  BE --> DB
+  IW -->|callback| BE
+      </pre>
+      <figcaption>Interview worker chỉ chạy khi bật profile <code>interview</code>.</figcaption>
+    </figure>
+    <pre><code>docker compose up -d --build database backend frontend
+docker compose --profile interview up -d --build interview-worker</code></pre>
+    <p>Chi tiết xem <a href="deploy-checklist.md">deploy-checklist</a> và <a href="production-cicd.md">production-cicd</a>. Bản chạy thử: <a href="https://c4-app-t040.pathplannerai.site">c4-app-t040.pathplannerai.site</a>.</p>
+
+    <!-- ============ 9. DECISIONS ============ -->
+    <h2 id="decisions">9. Quyết định thiết kế</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Quyết định</th><th>Lựa chọn</th><th>Lý do</th></tr></thead>
+      <tbody>
+        <tr><td>Chuẩn kỹ năng</td><td>ESCO + bảng alias</td><td>Chuẩn quốc tế, giải quyết khác biệt cách viết giữa CV và JD</td></tr>
+        <tr><td>Phân vai LLM / mã</td><td>LLM hiểu ngôn ngữ, mã kiểm tra cấu trúc</td><td>Giảm lỗi do LLM, kết quả kiểm chứng được</td></tr>
+        <tr><td>Roadmap</td><td>2 lượt AI + validator DAG</td><td>Lộ trình luôn hợp lệ về thứ tự tiên quyết</td></tr>
+        <tr><td>Nguồn topic</td><td>Outline nghề chuẩn có sẵn</td><td>LLM không bịa topic ngoài danh mục</td></tr>
+        <tr><td>Chatbot</td><td>State machine + LangGraph checkpoint</td><td>Khôi phục phiên, kiểm soát luồng và quyền gọi tool</td></tr>
+        <tr><td>Snapshot thị trường</td><td>Ghi nguyên tử</td><td>Đọc không bao giờ thấy file dở dang</td></tr>
+        <tr><td>Backend</td><td>FastAPI, module theo tầng</td><td>Async, typed, dễ tách và kiểm thử từng module</td></tr>
+      </tbody>
+    </table></div>
+
+    <!-- ============ 10. LIMITS ============ -->
+    <h2 id="roadmap">10. Hạn chế & Hướng mở rộng</h2>
+    <div class="callout warn"><p>Việc cào JD phụ thuộc cấu trúc và chính sách chống bot của các trang tuyển dụng, nên có thể gãy khi trang đổi giao diện. Interview bot hiện chưa giới hạn số phiên theo IP hoặc theo ngày; chỉ yêu cầu candidate đã đăng nhập.</p></div>
+    <div class="cards">
+      <div class="card"><h4>Adaptive Skill Assessment</h4><p>Câu hỏi thích ứng theo khung SFIA / Dreyfus để kiểm chứng chiều sâu kỹ năng.</p></div>
+      <div class="card"><h4>Curated Course Catalog</h4><p>Khóa học và bài thực hành tương ứng từng kỹ năng trong lộ trình.</p></div>
+      <div class="card"><h4>Opportunity Matching</h4><p>Gợi ý vị trí tuyển dụng mới khi ứng viên hoàn thành từng chặng.</p></div>
+      <div class="card"><h4>Mentor & Advisory Hub</h4><p>Kết nối ứng viên với chuyên gia trong ngành.</p></div>
+    </div>
+
+    <h3>Tài liệu liên quan</h3>
+    <div class="cards">
+      <a class="card" href="architecture_flow/02_AI_PIPELINE_MASTER_FLOW.md"><h4>AI Pipeline Master Flow</h4><p>Đặc tả đầy đủ 6 chặng của ai_pipeline_core.</p></a>
+      <a class="card" href="architecture_flow/01_CHATBOT_MASTER_FLOW.md"><h4>Chatbot Master Flow</h4><p>JEV, LangGraph 5 bước, checkpoint và tool allowlist.</p></a>
+    </div>
+  </main>
+
+  <aside class="toc" aria-label="Trên trang này">
+    <h4>Trên trang này</h4>
+    <a href="#problem">Bài toán</a>
+    <a href="#solution">Tổng quan giải pháp</a>
+    <a href="#architecture">Kiến trúc hệ thống</a>
+    <a href="#pipeline">AI Pipeline 6 chặng</a>
+    <a href="#algorithms">Thuật toán cốt lõi</a>
+    <a href="#chatbot">Chatbot & Interview</a>
+    <a href="#data">Dữ liệu & Hợp đồng</a>
+    <a href="#deploy">Triển khai</a>
+    <a href="#decisions">Quyết định thiết kế</a>
+    <a href="#roadmap">Hạn chế & Mở rộng</a>
+  </aside>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"></script>
+<script>
+  // Follow the OS color scheme for diagrams
+  const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  mermaid.initialize({ startOnLoad: true, theme: dark ? 'dark' : 'default', securityLevel: 'loose' });
+
+  // Highlight the section currently in view in both sidebars
+  const links = document.querySelectorAll('nav.side a, aside.toc a');
+  const sections = [...document.querySelectorAll('main h2')];
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (!e.isIntersecting) return;
+      links.forEach((a) => a.classList.toggle('active', a.getAttribute('href') === '#' + e.target.id));
+    });
+  }, { rootMargin: '-80px 0px -70% 0px' });
+  sections.forEach((s) => io.observe(s));
+</script>
+</body>
+</html>
