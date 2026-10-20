@@ -12,7 +12,8 @@
     --code-bg: #eef0fa; --warn-bg: #fff3e6; --warn: #8a4a00;
   }
   * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; scroll-padding-top: 90px; }
+  html { scrollbar-width: none; scroll-behavior: smooth; scroll-padding-top: 90px; }
+  html::-webkit-scrollbar { display: none; }
   body { margin: 0; background: var(--bg); color: var(--text);
     font: 16px/1.75 Inter, "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
   a { color: var(--navy); text-decoration: none; }
@@ -33,14 +34,21 @@
   .logo:hover { color: #fff; }
   .pill { background: var(--orange); color: #fff; font-size: 12px; font-weight: 800; letter-spacing: .06em;
     padding: 4px 14px; border-radius: 999px; }
-  .topnav { display: flex; gap: 28px; margin-right: auto; margin-left: 8px; }
-  .topnav a { color: rgba(255,255,255,.75); font-weight: 500; font-size: 15px; }
-  .topnav a.on, .topnav a:hover { color: #fff; font-weight: 700; }
-  .search { display: flex; align-items: center; gap: 10px; width: 340px; max-width: 40vw;
-    padding: 9px 12px 9px 14px; border: 1px solid rgba(255,255,255,.2); border-radius: 10px;
-    color: rgba(255,255,255,.7); font-size: 14px; background: rgba(255,255,255,.07); }
-  .search kbd { margin-left: auto; font: 700 12px inherit; background: rgba(255,255,255,.18);
-    padding: 2px 8px; border-radius: 6px; color: #fff; }
+  .search { position: relative; display: flex; align-items: center; gap: 10px; width: 340px; max-width: 40vw;
+    margin-left: auto; height: 44px; padding: 0 12px 0 14px; border: 1px solid rgba(255,255,255,.2); border-radius: 10px;
+    color: rgba(255,255,255,.7); background: rgba(255,255,255,.07); }
+  .search:focus-within { border-color: var(--orange); background: rgba(255,255,255,.12); }
+  .search input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; color: #fff; font: inherit; font-size: 14px; }
+  .search input::placeholder { color: rgba(255,255,255,.7); }
+  .search input::-webkit-search-cancel-button { display: none; }
+  .search kbd { font: 700 12px inherit; background: rgba(255,255,255,.18); padding: 2px 8px; border-radius: 6px; color: #fff; }
+  #results { position: absolute; top: calc(100% + 8px); right: 0; width: min(520px, 92vw); max-height: 70vh; overflow-y: auto;
+    background: var(--panel); border-radius: 14px; box-shadow: 0 12px 40px rgba(26,39,106,.25); padding: 8px; }
+  #results a { display: block; padding: 10px 12px; border-radius: 10px; color: var(--text); font-size: 14px; line-height: 1.5; }
+  #results a:hover, #results a.sel { background: var(--orange-soft); }
+  #results b { display: block; color: var(--navy); font-size: 15px; }
+  #results mark { background: #ffe2c2; color: inherit; border-radius: 3px; }
+  #results .none { padding: 14px 12px; color: var(--muted); font-size: 14px; }
 
   .layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); }
   nav.side { position: sticky; top: 64px; align-self: start; height: calc(100vh - 64px);
@@ -97,11 +105,13 @@
   .formula { text-align: center; font: 15px ui-monospace, Menlo, monospace; padding: 14px;
     background: var(--code-bg); color: var(--navy); border-radius: 12px; margin: 14px 0; overflow-x: auto; }
 
-    @media (max-width: 900px) { .topnav { display: none; } }
-  @media (max-width: 760px) {
+      @media (max-width: 760px) {
     .layout { display: block; }
-    header.top { padding: 0 16px; height: 56px; }
-    .search { display: none; }
+    header.top { padding: 0 16px; height: 56px; gap: 12px; }
+    .pill { display: none; }
+    .search { flex: 1; max-width: none; padding: 0 12px; }
+    .search kbd { display: none; }
+    #results { position: fixed; top: 60px; left: 8px; right: 8px; width: auto; }
     .logo { font-size: 18px; }
     nav.side { position: sticky; top: 56px; z-index: 9; height: auto; flex-direction: row; gap: 6px;
       overflow-x: auto; padding: 10px 12px; border-right: 0; border-bottom: 1px solid var(--line); }
@@ -128,8 +138,12 @@
     <a class="logo" href="#top">PathPlanner<span>AI</span></a>
     <span class="pill">DOCS</span>
   </div>
-  <nav class="topnav"><a class="on" href="#top">Kỹ thuật</a><a href="#top">API</a><a href="#top">Hướng dẫn</a></nav>
-  <div class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Tìm kiếm tài liệu… <kbd>⌘K</kbd></div>
+  <div class="search">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input id="q" type="search" placeholder="Tìm kiếm tài liệu…" autocomplete="off" aria-label="Tìm kiếm tài liệu">
+    <kbd>⌘K</kbd>
+    <div id="results" role="listbox" hidden></div>
+  </div>
 </header>
 
 <div class="layout" id="top">
@@ -493,6 +507,47 @@ docker compose --profile interview up -d --build interview-worker</code></pre>
     });
   }, { rootMargin: '-80px 0px -70% 0px' });
   sections.forEach((s) => io.observe(s));
+  // Client-side search over headings and their text
+  const q = document.getElementById('q'), box = document.getElementById('results');
+  const esc = (t) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const index = [];
+  let cur = null;
+  document.querySelectorAll('main h2, main h3, main h2 ~ *').forEach((el) => {
+    if (/^H[23]$/.test(el.tagName)) {
+      if (!el.id) el.id = 'sec-' + index.length;
+      const h2 = el.tagName === 'H2';
+      cur = { id: el.id, title: el.textContent.replace(/^\d+/, (n) => n + '. ').trim(), text: '', h2 };
+      index.push(cur);
+    } else if (cur && !el.matches('script')) cur.text += ' ' + el.textContent.replace(/\s+/g, ' ');
+  });
+  const norm = (t) => t.toLowerCase().normalize('NFC');
+  function search() {
+    const term = norm(q.value.trim());
+    if (!term) { box.hidden = true; return; }
+    const hits = index.map((s) => {
+      const inTitle = norm(s.title).includes(term), at = norm(s.text).indexOf(term);
+      return { s, at, score: inTitle ? 2 : at >= 0 ? 1 : 0 };
+    }).filter((h) => h.score).sort((a, b) => b.score - a.score).slice(0, 8);
+    box.innerHTML = hits.length ? hits.map(({ s, at }) => {
+      let snip = '';
+      if (at >= 0) {
+        const t = s.text.trim(), i = norm(t).indexOf(term);
+        snip = esc(t.slice(Math.max(0, i - 40), i + term.length + 80));
+        snip = snip.replace(new RegExp(esc(t.slice(i, i + term.length)).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'), (m) => '<mark>' + m + '</mark>');
+      }
+      return '<a href="#' + s.id + '"><b>' + esc(s.title) + '</b>' + snip + '</a>';
+    }).join('') : '<div class="none">Không tìm thấy kết quả</div>';
+    box.hidden = false;
+  }
+  q.addEventListener('input', search);
+  q.addEventListener('focus', search);
+  box.addEventListener('click', () => { box.hidden = true; q.blur(); });
+  document.addEventListener('click', (e) => { if (!e.target.closest('.search')) box.hidden = true; });
+  document.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); q.focus(); q.select(); }
+    if (e.key === 'Escape') { box.hidden = true; q.blur(); }
+    if (e.key === 'Enter' && document.activeElement === q) { const f = box.querySelector('a'); if (f) f.click(); }
+  });
 </script>
 </body>
 </html>
